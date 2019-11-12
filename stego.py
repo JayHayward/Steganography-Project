@@ -17,7 +17,7 @@ def main():
     parser.add_argument("--extract", help = "the file you want to extract a message from", type = str)
     argv = parser.parse_args()
 
-    # simply handle if a carrier file exists
+    # determine if a carrier file exists
     try:
         carrier = open(argv.carrier)
         # print('carrier file is: "{}"'.format(argv.carrier))
@@ -47,6 +47,7 @@ def extract_call(ext):
         print('the file to extract from is "{}"'.format(ext))
     except:
         print("ERROR: extract file specified not found")
+        return
 
 
 # Gather data of original and modified file
