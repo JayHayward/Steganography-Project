@@ -74,6 +74,21 @@ def extract_call(ext_file, carrier):
     with open(mod_file_name, 'w+') as f:
         f.write(e.decode('ascii'))
         f.write('\n')
+    remove_extract(ext_file, carrier)
+
+
+
+def remove_extract(ext_file, carrier):
+    global sof, eof
+    mnl = len(sof)
+    with open(ext_file, 'rb') as f:
+        r = f.read()
+        critical = r[r.find(sof) : r.find(eof)+mnl]
+        w = r.replace(critical, b'')
+        # print(w[-50:])
+    mod_file_name = carrier+'.removed'
+    with open(mod_file_name, 'wb+') as g:
+        g.write(w)
     return
 
 
