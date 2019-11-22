@@ -1,11 +1,6 @@
 to_extract
 to_read
 my_carrier
-tt
-tt\.embed
-tt\.extract
-tt\.removed
-vv
-vv\.embed
-vv\.extract
-vv\.removed
+tt*
+vv*
+xx*
