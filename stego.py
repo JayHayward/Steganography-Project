@@ -41,7 +41,7 @@ def main():
     elif argv.test:
         test_call(argv.test)
     elif(not (argv.embed or argv.extract)):
-        print('No arguments specified. \nPlease select --embed or --extract')
+        print('No arguments specified.\nPlease select --embed or --extract')
         print('Use -h or --help for usage')
         exit(1)
 
@@ -56,8 +56,10 @@ eof = b'\xaa\xbb\xcc\xdd\xee\xff\xcd\xab'  # swapped last 2 bytes
 
 # method to embed a message in carrier file
 def embed_call(emb_msg, carrier):
-    # if(png_flag):
-    #     embed
+    if(png_flag):
+        embed_png(emb_msg, carrier)
+        return
+
     print('you have selected embed')
     print('message to embed is: "{}"'.format(emb_msg)) # echo embed message
 
@@ -65,7 +67,6 @@ def embed_call(emb_msg, carrier):
     g = sof + g + eof # wrap file between magic numbers
     with open(carrier, 'rb') as m:
         f = m.read()  # read the raw binary
-        # print(f[:8] == png_marker) # true or false if png marker is found
         mod_file = f + g  # append my message to the end
     # print(mod_file[-20:])
     mod_file_name = 'embed.' + carrier # generate new file name
@@ -77,14 +78,18 @@ def embed_call(emb_msg, carrier):
 
 # method to extract message from a carrier file
 def extract_call(ext_file, carrier):
+    if(png_flag):
+        extract_png(ext_file, carrier)
+        return
+
     mnl = len(sof) # length of the magic numbers
     print('you have selected extract')
     with open(carrier, 'rb') as f: # read binary of the modified file
         r = f.read()
         e = r[r.find(sof)+mnl : r.find(eof)] # bytestring of the embeded message
-        print(e.decode('ascii')) # decoded, human-readable message
+        # print(e.decode('ascii')) # decoded, human-readable message
     mod_file_name = ext_file
-    with open(mod_file_name, 'w+') as f: # open or create plaintext file
+    with open(mod_file_name, 'w') as f: # open or create plaintext file
         f.write(e.decode('ascii')) # write decoded message to file
         f.write('\n')
     remove_extract(carrier) # call method to remove extracted message from file
@@ -92,10 +97,9 @@ def extract_call(ext_file, carrier):
 
 #remove extracted message from carrier
 def remove_extract(carrier):
-    print(carrier)
+    # print(carrier)
     mnl = len(sof) # length of my magic numbers
-    print(sof)
-    print('mnl: {}'.format(mnl))
+    # print('mnl: {}'.format(mnl))
     with open(carrier, 'rb+') as f: # open file in binary
         r = f.read()
         critical = r[r.find(sof) : r.find(eof)+mnl] # section of data that contains hidden message and sof/eof markers
@@ -105,12 +109,68 @@ def remove_extract(carrier):
 
 
 
+# embed method for png files
 def embed_png(emb_msg, carrier):
-    return(print('called embed_png'))
+    print('embed_png called')
+    eml = len(emb_msg) # length of embed message
+    n_bytes = 4  # want to represent eml in 4 bytes
+
+    eml = eml.to_bytes(n_bytes, byteorder = 'big')  # converts length of my message to bytestring
+    p_type = b'JAYY'  # custom type for new png chunk
+    msg = str.encode(emb_msg, 'UTF-8')  # encoded message
+    crc = binascii.crc32(p_type + msg).to_bytes(4, byteorder = 'big')  # some wacky thing that makes pngs work
+
+    # full message to embed:
+    # b'<length of message (4 bytes)> <TYPE> <message> <crc32>'
+    full = eml + p_type + msg + crc  # full message I can put directly into png file
+
+
+    # embedding image after first IDAT chunk - results in corrupt image
+    # with open(carrier, 'rb') as f:
+    #     r = f.read()
+    #     target = r.find(b'IDAT') - 4  # Want to put my image before the first IDAT chunk
+    #     before = r[:target]
+    #     after = r[target:]
+    #     r = before + full + after  # area to put my message
+    # with open('new.png', 'wb') as f:
+    #     f.write(r)
+
+    # embedding image after last TDAT chunk - no image loss
+    with open(carrier, 'rb') as f:
+        r = f.read()
+        target = r.rfind(b'IDAT')  # start of chunk type sector
+        cdl = int.from_bytes(r[target-4:target], byteorder = 'big')  # chunk data length
+        # print(cml)
+        target = target + cdl + 4  # read from start of chunk type to end of chunk
+        before = r[:target]
+        after = r[target:]
+        a = before + full + after  # area to put my message
+    with open('new.png', 'wb') as f:
+        f.write(a)
 
 
 def extract_png(ext_file, carrier):
-    return(print('called extract_png'))
+    print('called extract_png')
+    tag = b'JAYY'  # tag to look for, start of the JAYY chunk type
+    with open(carrier, 'rb+') as f:
+        r = f.read()
+        target = r.rfind(tag)
+        print(r[target:])
+        cdl = int.from_bytes(r[target-4:target], byteorder = 'big')  # chunk data length
+        soc = target - 4
+        eoc = target + 4 + cdl + 4
+        critical = r[soc : eoc]  # hidden message chunk
+        h_msg = r[target + 4 : eoc - 4]  # hidden messages
+        print(h_msg.decode('ascii'))
+        w = r.replace(critical, b'')
+        f.write(w)
+    with open(ext_file, 'w+') as f:
+        f.write(h_msg.decode('ascii'))
+        f.write('\n')
+
+
+
+
 
 
 
