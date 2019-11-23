@@ -17,7 +17,7 @@ def main():
     parser.add_argument("carrier", help = "the carrier file you want to interact with", type = str)
     parser.add_argument("--embed", help = "the hidden message you want to embed into the carrer file", type = str)
     parser.add_argument("--extract", help = "the file you want to print the hidden message to", type = str)
-    parser.add_argument("--test", help = "used for testing, disregard", type = str)
+    # parser.add_argument("--test", help = "used for testing, disregard", type = str)
     argv = parser.parse_args()
 
     # determine if a carrier file exists
@@ -38,8 +38,8 @@ def main():
         embed_call(argv.embed, argv.carrier)
     elif argv.extract:
         extract_call(argv.extract, argv.carrier)
-    elif argv.test:
-        test_call(argv.test)
+    # elif argv.test:
+    #     test_call(argv.test)
     elif(not (argv.embed or argv.extract)):
         print('No arguments specified.\nPlease select --embed or --extract')
         print('Use -h or --help for usage')
@@ -56,12 +56,12 @@ eof = b'\xaa\xbb\xcc\xdd\xee\xff\xcd\xab'  # swapped last 2 bytes
 
 # method to embed a message in carrier file
 def embed_call(emb_msg, carrier):
+    print('you have selected embed')
+    print('message to embed is: "{}"'.format(emb_msg)) # echo embed message
+
     if(png_flag):
         embed_png(emb_msg, carrier)
         return
-
-    print('you have selected embed')
-    print('message to embed is: "{}"'.format(emb_msg)) # echo embed message
 
     g = str.encode(emb_msg, 'utf-8') # encoded message
     g = sof + g + eof # wrap file between magic numbers
@@ -78,43 +78,33 @@ def embed_call(emb_msg, carrier):
 
 # method to extract message from a carrier file
 def extract_call(ext_file, carrier):
+    print('you have selected extract')
+    print('the message will be extracted to the file "{}"'.format(ext_file))
+
     if(png_flag):
         extract_png(ext_file, carrier)
         return
 
     mnl = len(sof) # length of the magic numbers
-    print('you have selected extract')
-    with open(carrier, 'rb') as f: # read binary of the modified file
+    with open(carrier, 'rb+') as f: # read binary of the modified file
         r = f.read()
-        e = r[r.find(sof)+mnl : r.find(eof)] # bytestring of the embeded message
-        # print(e.decode('ascii')) # decoded, human-readable message
+        critical = r[r.find(sof) : r.find(eof)+mnl]  # section of code that includes the message and magic numbers
+        h_msg = critical[8:-8]
+        w = r.replace(critical, b'')
+        f.write(w)
     mod_file_name = ext_file
     with open(mod_file_name, 'w') as f: # open or create plaintext file
-        f.write(e.decode('ascii')) # write decoded message to file
+        f.write(h_msg.decode('ascii')) # write decoded message to file
         f.write('\n')
-    remove_extract(carrier) # call method to remove extracted message from file
 
 
-#remove extracted message from carrier
-def remove_extract(carrier):
-    # print(carrier)
-    mnl = len(sof) # length of my magic numbers
-    # print('mnl: {}'.format(mnl))
-    with open(carrier, 'rb+') as f: # open file in binary
-        r = f.read()
-        critical = r[r.find(sof) : r.find(eof)+mnl] # section of data that contains hidden message and sof/eof markers
-        w = r.replace(critical, b'') # remove selected section, replace with embty bytestring
-        f.write(w)
-    return
 
-
+### PNG FILES ###
 
 # embed method for png files
 def embed_png(emb_msg, carrier):
-    print('embed_png called')
     eml = len(emb_msg) # length of embed message
     n_bytes = 4  # want to represent eml in 4 bytes
-
     eml = eml.to_bytes(n_bytes, byteorder = 'big')  # converts length of my message to bytestring
     p_type = b'JAYY'  # custom type for new png chunk
     msg = str.encode(emb_msg, 'UTF-8')  # encoded message
@@ -124,45 +114,34 @@ def embed_png(emb_msg, carrier):
     # b'<length of message (4 bytes)> <TYPE> <message> <crc32>'
     full = eml + p_type + msg + crc  # full message I can put directly into png file
 
-
-    # embedding image after first IDAT chunk - results in corrupt image
-    # with open(carrier, 'rb') as f:
-    #     r = f.read()
-    #     target = r.find(b'IDAT') - 4  # Want to put my image before the first IDAT chunk
-    #     before = r[:target]
-    #     after = r[target:]
-    #     r = before + full + after  # area to put my message
-    # with open('new.png', 'wb') as f:
-    #     f.write(r)
-
     # embedding image after last TDAT chunk - no image loss
     with open(carrier, 'rb') as f:
         r = f.read()
         target = r.rfind(b'IDAT')  # start of chunk type sector
         cdl = int.from_bytes(r[target-4:target], byteorder = 'big')  # chunk data length
-        # print(cml)
         target = target + cdl + 4  # read from start of chunk type to end of chunk
         before = r[:target]
         after = r[target:]
         a = before + full + after  # area to put my message
-    with open('new.png', 'wb') as f:
+    mod_file_name = 'embed.' + carrier
+    with open(mod_file_name, 'wb') as f:
         f.write(a)
+    collect_data(carrier, mod_file_name) # gather and print data
+    return
 
 
 def extract_png(ext_file, carrier):
-    print('called extract_png')
+    # print('called extract_png')
     tag = b'JAYY'  # tag to look for, start of the JAYY chunk type
     with open(carrier, 'rb+') as f:
         r = f.read()
         target = r.rfind(tag)
-        print(r[target:])
         cdl = int.from_bytes(r[target-4:target], byteorder = 'big')  # chunk data length
         soc = target - 4
         eoc = target + 4 + cdl + 4
         critical = r[soc : eoc]  # hidden message chunk
-        h_msg = r[target + 4 : eoc - 4]  # hidden messages
-        print(h_msg.decode('ascii'))
-        w = r.replace(critical, b'')
+        h_msg = r[target + 4 : eoc - 4]  # hidden messages in bytestring
+        w = r.replace(critical, b'')  # remove critical secton from original file
         f.write(w)
     with open(ext_file, 'w+') as f:
         f.write(h_msg.decode('ascii'))
@@ -170,14 +149,8 @@ def extract_png(ext_file, carrier):
 
 
 
-
-
-
-
-
 # Gather data of original and modified file
 def collect_data(og_file, mod_file):
-    # print('collect called')
     st1 = os.stat(og_file)
     if not mod_file:  # collect just the data of the original file
         print('no argument selected, printing data of the carrier file')
@@ -203,7 +176,6 @@ def test_call(fil):
         r = f[:25]
         # print(r)
 
-    ftf = 'embed.' + fil
     print(ftf)
     with open(ftf, 'rb') as tft:
         s = tft.read()
