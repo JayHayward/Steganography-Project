@@ -6,7 +6,7 @@ Project 3 for CYBR 5830-013 Digital Forensics
 
 
 
-### WRITEUP
+## WRITEUP
 
 This program extracts and embeds strings within files so that messages can be sent discretely without being easy to read and decipher.
 My initial strategy to this project was to simply append a message to the end of a given image file. This was easy enough to do, just encode my message, open the file, write it to the end, then re-encode the new file. This created no visible changes to the image and the message could be read with any text editor.
@@ -24,11 +24,11 @@ The interesting thing about embedded messages in PNGs is that, if you're clever 
 For further information on how I'm going about this project, the commented code should be enough to give you a good understanding of my methods. 
 
 
-# TO RUN MY SCRIPT:
+### TO RUN MY SCRIPT:
 
-python stego.py -h                                      to receive information about and how to use my program__
-python stego.py <carrier>                               asks you to specify an argument and shows usage__
+python stego.py -h                                      to receive information about and how to use my program<br />
+python stego.py <carrier>                               asks you to specify an argument and shows usage<br />
 python stego.py <carrier> --embed <message>             takes a message string and embeds it in the carrier file
-                                                          this will result in a file named embed.<carrier>__
+                                                          this will result in a file named embed.<carrier><br />
 python stego.py <carrier> --extract <filename>          takes the embedded file specified and extracts the message from it
                                                           this will result in a file with the specified filename containing                                                             the hidden message
