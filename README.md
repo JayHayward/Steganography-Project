@@ -26,9 +26,9 @@ For further information on how I'm going about this project, the commented code 
 
 ### TO RUN MY SCRIPT:
 
-python stego.py -h                                      to receive information about and how to use my program<br />
-python stego.py <carrier>                               asks you to specify an argument and shows usage<br />
-python stego.py <carrier> --embed <message>             takes a message string and embeds it in the carrier file
+`python stego.py -h`                                      to receive information about and how to use my program<br />
+`python stego.py <carrier>`                               asks you to specify an argument and shows usage<br />
+`python stego.py <carrier> --embed <message>`             takes a message string and embeds it in the carrier file
                                                           this will result in a file named embed.<carrier><br />
-python stego.py <carrier> --extract <filename>          takes the embedded file specified and extracts the message from it
+`python stego.py <carrier> --extract <filename>`          takes the embedded file specified and extracts the message from it
                                                           this will result in a file with the specified filename containing                                                             the hidden message
